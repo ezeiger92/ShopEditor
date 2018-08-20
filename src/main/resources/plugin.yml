@@ -1,0 +1,17 @@
+name: ShopEditor
+main: com.chromaclypse.shopeditor.ShopPlugin
+version: ${project.version}
+description: Edit shop signs
+author: ezeiger92
+api-version: 1.13
+depend: [ChromaLib, ChestShop]
+commands:
+  shopeditor:
+    description: Open editor gui
+    usage: /<command>
+    permission: shopeditor.edit
+    aliases: []
+permissions:
+  shopeditor.edit:
+    description: Editor perm
+    default: op
