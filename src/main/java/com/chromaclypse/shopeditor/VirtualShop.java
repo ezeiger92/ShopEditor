@@ -119,10 +119,6 @@ public class VirtualShop {
         this.itemString = itemString;
     }
 
-    public UUID getOwner() {
-        return owner;
-    }
-
     public int getAmount() {
         return amount;
     }
@@ -133,10 +129,6 @@ public class VirtualShop {
 
     public double getRefund() {
         return refund;
-    }
-
-    public String getItem() {
-        return itemString;
     }
 
     public int setAmount(int amount) {
@@ -171,7 +163,7 @@ public class VirtualShop {
             return false;
         }
 
-		if(sign.getLine(3).equals("%hand%")) {
+		if(itemString.equals("%hand%")) {
 			ItemStack hand = player.getInventory().getItemInMainHand();
 
 			Block block = sign.getBlock().getRelative(BlockFace.DOWN);
@@ -186,7 +178,13 @@ public class VirtualShop {
 			first = inv.getItem(0);
 			inv.setItem(0, hand);
 			sign.setLine(3, "?");
-		}
+        }
+        else if(itemString.isEmpty()) {
+            sign.setLine(0, "");
+            sign.setLine(1, "");
+            sign.setLine(2, "");
+            sign.setLine(3, "");
+        }
 
 		SignChangeEvent event = new SignChangeEvent(sign.getBlock(), player, sign.getLines());
 
