@@ -3,23 +3,18 @@ package com.chromaclypse.shopeditor;
 import java.util.HashSet;
 
 import com.chromaclypse.api.item.ItemBuilder;
+import com.chromaclypse.api.menu.Clicks;
 import com.chromaclypse.api.menu.Menu;
 
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import org.bukkit.block.Block;
-import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
-import org.bukkit.block.Chest;
 import org.bukkit.block.Sign;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
-import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
-import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 public class ShopEditor<UUID> implements Listener {
@@ -33,56 +28,20 @@ public class ShopEditor<UUID> implements Listener {
 		return false;
 	}
 
-	private void fireSign(Player player, Sign sign) {
-		Inventory inv = null;
-		ItemStack first = null;
+	private void openShopEditor(VirtualShop shop, Player player) {
 
-		if(sign.getLine(3).equals("%hand%")) {
-			ItemStack hand = player.getInventory().getItemInMainHand();
-
-			Block block = sign.getBlock().getRelative(BlockFace.DOWN);
-
-			if(!(block.getState() instanceof Chest)) {
-				return;
-			}
-
-			Chest chest = (Chest) block;
-
-			inv = chest.getInventory();
-			first = inv.getItem(0);
-			inv.setItem(0, hand);
-			sign.setLine(3, "?");
+		if(shop == null) {
+			return;
 		}
 
-		SignChangeEvent event = new SignChangeEvent(sign.getBlock(), player, sign.getLines());
-
-		if(inv != null) {
-			inv.setItem(0, first);
-		}
-
-		Bukkit.getPluginManager().callEvent(event);
-
-		if(!event.isCancelled()) {
-			sign.update();
-			player.closeInventory();
-		}
-		else {
-			// error message
-		}
-	}
-
-	private Menu constructMenu(Sign sign) {
 		Menu menu = new Menu(1, "Shop Editor");
 
 		// Delete
 		menu.put(0, new ItemBuilder(Material.RED_WOOL)
 			.display("&cDelete this shop")
 			.get(), click -> {
-				sign.setLine(0, "");
-				sign.setLine(1, "");
-				sign.setLine(2, "");
-				sign.setLine(3, "");
-				fireSign((Player) click.getWhoClicked(), sign);
+				shop.clear();
+				shop.updateAs(player);
 		});
 
 		// Item
@@ -92,31 +51,35 @@ public class ShopEditor<UUID> implements Listener {
 				ItemStack hand = ((Player) click.getWhoClicked()).getInventory().getItemInMainHand();
 
 				if(hand != null && hand.getType() != Material.AIR) {
-					sign.setLine(3, "%hand%");
+					shop.setItem("%hand%");
 				}
 		});
 
 		// Quantity
 		menu.put(3, new ItemStack(Material.RED_WOOL), click -> {
-
+			shop.setAmount(Clicks.number(click, shop.getAmount(), 10));
 		});
 
 		// Price
 		menu.put(5, new ItemStack(Material.RED_WOOL), click -> {
+			double extra = shop.getPrice() - Math.floor(shop.getPrice());
 
+			shop.setPrice(Clicks.number(click, (int)Math.floor(shop.getPrice()), 10) + extra);
 		});
 
 		// Refund
 		menu.put(6, new ItemStack(Material.RED_WOOL), click -> {
+			double extra = shop.getRefund() - Math.floor(shop.getRefund());
 
+			shop.setRefund(Clicks.number(click, (int)Math.floor(shop.getRefund()), 10) + extra);
 		});
 
 		// Confirm
 		menu.put(8, new ItemStack(Material.RED_WOOL), click -> {
-			fireSign((Player) click.getWhoClicked(), sign);
+			shop.updateAs(player);
 		});
 
-		return menu;
+		player.openInventory(menu.getInventory());
 	}
 
 	@EventHandler(ignoreCancelled = true)
@@ -130,9 +93,7 @@ public class ShopEditor<UUID> implements Listener {
 			if(block instanceof Sign &&
 						canEdit(event.getPlayer(), (Sign) block) &&
 						pending.remove(event.getPlayer().getUniqueId())) {
-				Menu menu = constructMenu((Sign) block);
-
-				event.getPlayer().openInventory(menu.getInventory());
+				openShopEditor(VirtualShop.parse((Sign) block), event.getPlayer());
 			}
 		}
 	}
