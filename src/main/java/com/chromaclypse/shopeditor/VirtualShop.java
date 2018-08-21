@@ -3,6 +3,8 @@ package com.chromaclypse.shopeditor;
 import java.util.Locale;
 import java.util.UUID;
 
+import com.chromaclypse.api.Log;
+
 import org.bukkit.Bukkit;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -24,12 +26,18 @@ public class VirtualShop {
     public static VirtualShop parse(Sign sign) {
         String[] lines = sign.getLines();
 
+        Log.info("lines[0]: " + lines[0]);
+        Log.info("lines[1]: " + lines[1]);
+        Log.info("lines[2]: " + lines[2]);
+        Log.info("lines[3]: " + lines[3]);
+
         UUID owner;
         {
             String[] first = lines[0].split(" ");
             String uuidString = first[first.length - 1];
 
             if(uuidString.isEmpty()) {
+                Log.info("empty line");
                 return null;
             }
 
@@ -37,6 +45,7 @@ public class VirtualShop {
                 owner = UUID.fromString(uuidString);
             }
             catch(IllegalArgumentException e) {
+                Log.info("offline uuid");
                 owner = UUID.nameUUIDFromBytes(lines[0].getBytes());
             }
         }
@@ -46,67 +55,74 @@ public class VirtualShop {
             amount = Integer.parseInt(lines[1]);
         }
         catch(NumberFormatException e) {
+            Log.info("bad amount");
             return null;
         }
 
         double price = 0.0;
         double refund = 0.0;
         {
-            boolean hasPrice = false;
-            boolean hasRefund = false;
             String[] bs = lines[2].split(":");
 
             if(bs.length > 2) {
+                Log.info("Full price line");
                 return null;
             }
 
             for(String part : bs) {
-                boolean isBuy = true;
-                boolean hasNumber = false;
+                Log.info("part: " + part);
+                Double value = null;
+
+                String key = null;
 
                 for(String segment : part.trim().split(" ")) {
+                    if(segment.isEmpty()) {
+                        continue;
+                    }
+
                     if(segment.toLowerCase(Locale.ENGLISH).equals("b")) {
-                        if(hasPrice || hasRefund) {
+                        if(key != null) {
+                            Log.info("already found: " + key + " (b)");
                             return null;
                         }
 
-                        hasPrice = true;
+                        key = "b";
                     }
                     else if(segment.toLowerCase(Locale.ENGLISH).equals("s")) {
-                        if(hasPrice || hasRefund) {
+                        if(key != null) {
+                            Log.info("already found: " + key + " (s)");
                             return null;
                         }
 
-                        isBuy = false;
-                        hasRefund = true;
+                        key = "s";
                     }
                     else {
-                        double number;
-
                         try {
-                            number = Double.parseDouble(segment);
+                            value = Double.valueOf(segment);
                         }
                         catch(NumberFormatException e) {
+                            Log.info("bad number: " + segment);
                             return null;
                         }
-
-                        if(isBuy) {
-                            price = number;
-                        }
-                        else {
-                            refund = number;
-                        }
-
-                        hasNumber = true;
                     }
                 }
 
-                if(!hasNumber) {
+                if(value == null) {
+                    Log.info("no number in " + part);
                     return null;
+                }
+                else {
+                    if("b".equals(key)) {
+                        price = value.doubleValue();
+                    }
+                    else {
+                        refund = value.doubleValue();
+                    }
                 }
             }
         }
 
+        Log.info("is good");
         return new VirtualShop(sign, owner, amount, price, refund, lines[3]);
     }
 
@@ -155,11 +171,15 @@ public class VirtualShop {
         this.itemString = "";
     }
 
+    public boolean editableBy(Player player) {
+        return player.hasPermission("shopeditor.any") || player.getUniqueId().equals(owner);
+    }
+
     public boolean updateAs(Player player) {
 		Inventory inv = null;
         ItemStack first = null;
         
-        if(!player.hasPermission("shopeditor.any") && !player.getUniqueId().equals(owner)) {
+        if(!editableBy(player)) {
             return false;
         }
 
@@ -172,7 +192,7 @@ public class VirtualShop {
 				return false;
 			}
 
-			Chest chest = (Chest) block;
+			Chest chest = (Chest) block.getState();
 
 			inv = chest.getInventory();
 			first = inv.getItem(0);

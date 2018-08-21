@@ -1,7 +1,9 @@
 package com.chromaclypse.shopeditor;
 
 import java.util.HashSet;
+import java.util.UUID;
 
+import com.chromaclypse.api.Log;
 import com.chromaclypse.api.item.ItemBuilder;
 import com.chromaclypse.api.menu.Clicks;
 import com.chromaclypse.api.menu.Menu;
@@ -11,29 +13,21 @@ import org.bukkit.block.BlockState;
 import org.bukkit.block.Sign;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 
-public class ShopEditor<UUID> implements Listener {
+public class ShopEditor implements Listener {
 	private HashSet<UUID> pending = new HashSet<>();
 
 	public void add(UUID uuid) {
 		pending.add(uuid);
 	}
 
-	private boolean canEdit(Player player, Sign sign) {
-		return false;
-	}
-
 	private void openShopEditor(VirtualShop shop, Player player) {
-
-		if(shop == null) {
-			return;
-		}
-
 		Menu menu = new Menu(1, "Shop Editor");
 
 		// Delete
@@ -82,18 +76,25 @@ public class ShopEditor<UUID> implements Listener {
 		player.openInventory(menu.getInventory());
 	}
 
-	@EventHandler(ignoreCancelled = true)
+	@EventHandler(priority = EventPriority.LOWEST)
 	public void onRightClick(PlayerInteractEvent event) {
+		Log.info("click");
 
 		if(event.getAction() == Action.RIGHT_CLICK_BLOCK &&
 				event.getHand() == EquipmentSlot.HAND) {
+					Log.info("right primary");
 
 			BlockState block = event.getClickedBlock().getState();
 
-			if(block instanceof Sign &&
-						canEdit(event.getPlayer(), (Sign) block) &&
-						pending.remove(event.getPlayer().getUniqueId())) {
-				openShopEditor(VirtualShop.parse((Sign) block), event.getPlayer());
+			if(block instanceof Sign) {
+				Log.info("sign");
+				VirtualShop shop = VirtualShop.parse((Sign) block);
+
+				if(shop != null && shop.editableBy(event.getPlayer())) {
+					Log.info("shop");
+					openShopEditor(shop, event.getPlayer());
+					event.setCancelled(true);
+				}
 			}
 		}
 	}
