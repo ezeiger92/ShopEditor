@@ -4,8 +4,10 @@ import java.util.Locale;
 import java.util.UUID;
 
 import com.chromaclypse.api.Log;
+import com.chromaclypse.api.item.ItemBuilder;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.Chest;
@@ -21,7 +23,7 @@ public class VirtualShop {
     private int amount;
     private double price;
     private double refund;
-    private String itemString;
+    private ItemStack item;
 
     public static VirtualShop parse(Sign sign) {
         String[] lines = sign.getLines();
@@ -123,16 +125,16 @@ public class VirtualShop {
         }
 
         Log.info("is good");
-        return new VirtualShop(sign, owner, amount, price, refund, lines[3]);
+        return new VirtualShop(sign, owner, amount, price, refund, null);
     }
 
-    private VirtualShop(Sign sign, UUID owner, int amount, double price, double refund, String itemString) {
+    private VirtualShop(Sign sign, UUID owner, int amount, double price, double refund, ItemStack item) {
         this.sign = sign;
         this.owner = owner;
         this.amount = amount;
         this.price = price;
         this.refund = refund;
-        this.itemString = itemString;
+        this.item = ItemBuilder.clone(item);
     }
 
     public int getAmount() {
@@ -163,12 +165,12 @@ public class VirtualShop {
         return this.price = Math.min(0, Math.max(price, refund));
     }
 
-    public void setItem(String itemString) {
-        this.itemString = itemString;
+    public void setItem(ItemStack item) {
+        this.item = ItemBuilder.clone(item);
     }
 
     public void clear() {
-        this.itemString = "";
+        this.item = new ItemStack(Material.AIR);
     }
 
     public boolean editableBy(Player player) {
@@ -176,46 +178,58 @@ public class VirtualShop {
     }
 
     public boolean updateAs(Player player) {
-		Inventory inv = null;
         ItemStack first = null;
+        Chest chest = null;
         
         if(!editableBy(player)) {
             return false;
         }
 
-		if(itemString.equals("%hand%")) {
-			ItemStack hand = player.getInventory().getItemInMainHand();
-
-			Block block = sign.getBlock().getRelative(BlockFace.DOWN);
-
-			if(!(block.getState() instanceof Chest)) {
-				return false;
-			}
-
-			Chest chest = (Chest) block.getState();
-
-			inv = chest.getInventory();
-			first = inv.getItem(0);
-			inv.setItem(0, hand);
-			sign.setLine(3, "?");
-        }
-        else if(itemString.isEmpty()) {
-            sign.setLine(0, "");
-            sign.setLine(1, "");
-            sign.setLine(2, "");
-            sign.setLine(3, "");
+        if(!(sign.getBlock().getState() instanceof Sign)) {
+            return false;
         }
 
-		SignChangeEvent event = new SignChangeEvent(sign.getBlock(), player, sign.getLines());
+        if(item != null) {
+            if(item.getType() != Material.AIR) {
+                Block block = sign.getBlock().getRelative(BlockFace.DOWN);
 
-		if(inv != null) {
-			inv.setItem(0, first);
-		}
+                if(!(block.getState() instanceof Chest)) {
+                    return false;
+                }
+
+                chest = (Chest) block.getState();
+
+                Inventory inv = chest.getInventory();
+                first = inv.getItem(0);
+                
+                inv.setItem(0, item);
+
+                sign.setLine(3, "?");
+            }
+            else {
+                sign.setLine(0, "");
+                sign.setLine(1, "");
+                sign.setLine(2, "");
+                sign.setLine(3, "");
+            }
+        }
+        
+        SignChangeEvent event = new SignChangeEvent(sign.getBlock(), player, sign.getLines());
 
 		Bukkit.getPluginManager().callEvent(event);
 
+		if(chest != null) {
+            chest.getInventory().setItem(0, first);
+		}
+
 		if(!event.isCancelled()) {
-			sign.update();
+            String lines[] = event.getLines();
+            sign.setLine(0, lines[0]);
+            sign.setLine(1, lines[1]);
+            sign.setLine(2, lines[2]);
+            sign.setLine(3, lines[3]);
+            sign.update();
+
             player.closeInventory();
             return true;
 		}

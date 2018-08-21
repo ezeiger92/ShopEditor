@@ -45,7 +45,7 @@ public class ShopEditor implements Listener {
 				ItemStack hand = ((Player) click.getWhoClicked()).getInventory().getItemInMainHand();
 
 				if(hand != null && hand.getType() != Material.AIR) {
-					shop.setItem("%hand%");
+					shop.setItem(hand);
 				}
 		});
 
@@ -90,7 +90,8 @@ public class ShopEditor implements Listener {
 				Log.info("sign");
 				VirtualShop shop = VirtualShop.parse((Sign) block);
 
-				if(shop != null && shop.editableBy(event.getPlayer())) {
+				if(shop != null && shop.editableBy(event.getPlayer()) &&
+						pending.remove(event.getPlayer().getUniqueId())) {
 					Log.info("shop");
 					openShopEditor(shop, event.getPlayer());
 					event.setCancelled(true);
