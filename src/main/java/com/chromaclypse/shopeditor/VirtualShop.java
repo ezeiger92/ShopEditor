@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import com.chromaclypse.api.Log;
 import com.chromaclypse.api.item.ItemBuilder;
+import com.chromaclypse.api.messages.Text;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -21,8 +22,10 @@ public class VirtualShop {
     private Sign sign;
     private UUID owner;
     private int amount;
-    private double price;
-    private double refund;
+    private int price;
+    private int priceMinor;
+    private int refund;
+    private int refundMinor;
     private ItemStack item;
 
     public static VirtualShop parse(Sign sign) {
@@ -124,45 +127,104 @@ public class VirtualShop {
             }
         }
 
+        Material mat = Material.matchMaterial(lines[3].split("#")[0].replace(' ', '_'));
+
         Log.info("is good");
-        return new VirtualShop(sign, owner, amount, price, refund, null);
+        VirtualShop shop = new VirtualShop();
+
+        shop.sign = sign;
+        shop.owner = owner;
+        shop.amount = amount;
+        shop.price = (int)Math.floor(price);
+        shop.priceMinor = (int)Math.round((price - shop.price) * 100);
+        shop.refund = (int)Math.floor(refund);
+        shop.refundMinor = (int)Math.round((refund - shop.refund) * 100);
+        shop.item = mat != null ? new ItemStack(mat) : null;
+
+        return shop;
     }
 
-    private VirtualShop(Sign sign, UUID owner, int amount, double price, double refund, ItemStack item) {
-        this.sign = sign;
-        this.owner = owner;
-        this.amount = amount;
-        this.price = price;
-        this.refund = refund;
-        this.item = ItemBuilder.clone(item);
+    private VirtualShop() {
     }
 
     public int getAmount() {
         return amount;
     }
 
-    public double getPrice() {
+    public String getPriceDisplay() {
+        String priceString = Text.format().commas(price) + '.';
+        String minor = String.valueOf(priceMinor);
+
+        if(priceMinor < 10) {
+            minor = "0" + minor;
+        }
+
+        return priceString + minor;
+    }
+
+    public String getRefundDisplay() {
+        String refundString = Text.format().commas(refund) + '.';
+        String minor = String.valueOf(refundMinor);
+
+        if(refundMinor < 10) {
+            minor = "0" + minor;
+        }
+
+        return refundString + minor;
+    }
+
+    public int getPriceMajor() {
         return price;
     }
 
-    public double getRefund() {
+    public int getPriceMinor() {
+        return priceMinor;
+    }
+
+    public int getRefundMajor() {
         return refund;
+    }
+
+    public int getRefundMinor() {
+        return refundMinor;
+    }
+
+    public ItemStack getItem() {
+        return item;
     }
 
     public int setAmount(int amount) {
         return this.amount = Math.min(64, Math.max(1, amount));
     }
 
-    public double setPrice(double price) {
-        if(price == 0.0) {
-            return this.price = 0.0;
+    public int setPriceMajor(int price) {
+        if(price <= refund) {
+            priceMinor = Math.max(priceMinor, refundMinor);
+            return this.price = refund;
         }
 
-        return this.price = Math.max(refund, price);
+        return this.price = price;
     }
 
-    public double setRefund(double refund) {
-        return this.price = Math.min(0, Math.max(price, refund));
+    public int setPriceMinor(int priceMinor) {
+        int min = price == refund ? refundMinor : 0;
+
+        return this.priceMinor = Math.max(Math.min(priceMinor, 99), min);
+    }
+
+    public int setRefundMajor(int refund) {
+        if(refund >= price) {
+            priceMinor = Math.min(priceMinor, refundMinor);
+            return this.refund = price;
+        }
+
+        return this.refund = refund;
+    }
+
+    public int setRefundMinor(int refundMinor) {
+        int max = refund == price ? priceMinor : 99;
+
+        return this.priceMinor = Math.max(Math.min(priceMinor, max), 0);
     }
 
     public void setItem(ItemStack item) {

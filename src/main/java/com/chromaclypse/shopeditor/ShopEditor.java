@@ -27,50 +27,103 @@ public class ShopEditor implements Listener {
 		pending.add(uuid);
 	}
 
+	private static ItemStack makeItemButton(VirtualShop shop) {
+		return new ItemBuilder(shop.getItem())
+			.display("Set shop item &7(in your hand)")
+			.get();
+	}
+
+	private static ItemStack makeQuantityButton(VirtualShop shop) {
+		return new ItemBuilder(Material.EMERALD)
+			.amount(shop.getAmount())
+			.display("Set transaction amount")
+			.get();
+	}
+
+	private static ItemStack makePriceMajorButton(VirtualShop shop) {
+		return new ItemBuilder(Material.GOLD_INGOT)
+			.wrapText("&aPrice: " + shop.getPriceDisplay(),
+			"Click to set major price")
+			.get();
+	}
+
+	private static ItemStack makePriceMinorButton(VirtualShop shop) {
+		return new ItemBuilder(Material.GOLD_NUGGET)
+			.wrapText("&aPrice: " + shop.getPriceDisplay(),
+			"Click to set minor price")
+			.get();
+	}
+
+	private static ItemStack makeRefundMajorButton(VirtualShop shop) {
+		return new ItemBuilder(Material.IRON_INGOT)
+			.wrapText("&aRefund: " + shop.getRefundDisplay(),
+			"Click toset major price")
+			.get();
+	}
+
+	private static ItemStack makeRefundMinorButton(VirtualShop shop) {
+		return new ItemBuilder(Material.IRON_NUGGET)
+			.wrapText("&aRefund: " + shop.getRefundDisplay(),
+			"Click to set minor price")
+			.get();
+	}
+
 	private void openShopEditor(VirtualShop shop, Player player) {
-		Menu menu = new Menu(1, "Shop Editor");
+		Menu menu = new Menu(2, "Shop Editor");
 
 		// Delete
 		menu.put(0, new ItemBuilder(Material.RED_WOOL)
-			.display("&cDelete this shop")
+			.display("&cDelete shop")
 			.get(), click -> {
 				shop.clear();
 				shop.updateAs(player);
 		});
 
 		// Item
-		menu.put(2, new ItemBuilder(Material.EMERALD)
-			.display("Set shop item &7(in your hand)")
-			.get(), click -> {
+		menu.put(2, makeItemButton(shop), click -> {
 				ItemStack hand = ((Player) click.getWhoClicked()).getInventory().getItemInMainHand();
 
 				if(hand != null && hand.getType() != Material.AIR) {
 					shop.setItem(hand);
+					menu.getInventory().setItem(2, makeItemButton(shop));
 				}
 		});
 
 		// Quantity
-		menu.put(3, new ItemStack(Material.RED_WOOL), click -> {
-			shop.setAmount(Clicks.number(click, shop.getAmount(), 10));
+		menu.put(3, makeQuantityButton(shop), click -> {
+				shop.setAmount(Clicks.number(click, shop.getAmount(), 10));
+				menu.getInventory().setItem(3, makeQuantityButton(shop));
 		});
 
 		// Price
-		menu.put(5, new ItemStack(Material.RED_WOOL), click -> {
-			double extra = shop.getPrice() - Math.floor(shop.getPrice());
+		menu.put(5, makePriceMajorButton(shop), click -> {
+			shop.setPriceMajor(Clicks.number(click, shop.getPriceMajor(), 10));
+			menu.getInventory().setItem(5, makePriceMajorButton(shop));
+		});
 
-			shop.setPrice(Clicks.number(click, (int)Math.floor(shop.getPrice()), 10) + extra);
+		// Price Minor
+		menu.put(14, makePriceMinorButton(shop), click -> {
+			shop.setPriceMinor(Clicks.number(click, shop.getPriceMinor(), 10));
+			menu.getInventory().setItem(14, makePriceMinorButton(shop));
 		});
 
 		// Refund
-		menu.put(6, new ItemStack(Material.RED_WOOL), click -> {
-			double extra = shop.getRefund() - Math.floor(shop.getRefund());
+		menu.put(6, makeRefundMajorButton(shop), click -> {
+			shop.setRefundMajor(Clicks.number(click, shop.getRefundMajor(), 10));
+			menu.getInventory().setItem(6, makeRefundMajorButton(shop));
+		});
 
-			shop.setRefund(Clicks.number(click, (int)Math.floor(shop.getRefund()), 10) + extra);
+		// Refund Minor
+		menu.put(15, makeRefundMinorButton(shop), click -> {
+			shop.setRefundMinor(Clicks.number(click, shop.getRefundMinor(), 10));
+			menu.getInventory().setItem(15, makeRefundMinorButton(shop));
 		});
 
 		// Confirm
-		menu.put(8, new ItemStack(Material.RED_WOOL), click -> {
-			shop.updateAs(player);
+		menu.put(8, new ItemBuilder(Material.GREEN_WOOL)
+			.display("&2Update shop")
+			.get(), click -> {
+				shop.updateAs(player);
 		});
 
 		player.openInventory(menu.getInventory());
