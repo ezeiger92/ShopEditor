@@ -27,6 +27,13 @@ public class ShopEditor implements Listener {
 		pending.add(uuid);
 	}
 
+	private static void updateShopButtons(VirtualShop shop, Menu menu) {
+		menu.getInventory().setItem( 5, makePriceMajorButton(shop));
+		menu.getInventory().setItem(14, makePriceMinorButton(shop));
+		menu.getInventory().setItem( 6, makeRefundMajorButton(shop));
+		menu.getInventory().setItem(15, makeRefundMinorButton(shop));
+	}
+
 	private static ItemStack makeItemButton(VirtualShop shop) {
 		return new ItemBuilder(shop.getItem())
 			.display("Set shop item &7(in your hand)")
@@ -57,14 +64,14 @@ public class ShopEditor implements Listener {
 	private static ItemStack makeRefundMajorButton(VirtualShop shop) {
 		return new ItemBuilder(Material.IRON_INGOT)
 			.wrapText("&aRefund: " + shop.getRefundDisplay(),
-			"Click toset major price")
+			"Click to set major refund")
 			.get();
 	}
 
 	private static ItemStack makeRefundMinorButton(VirtualShop shop) {
 		return new ItemBuilder(Material.IRON_NUGGET)
 			.wrapText("&aRefund: " + shop.getRefundDisplay(),
-			"Click to set minor price")
+			"Click to set minor refund")
 			.get();
 	}
 
@@ -91,32 +98,32 @@ public class ShopEditor implements Listener {
 
 		// Quantity
 		menu.put(3, makeQuantityButton(shop), click -> {
-				shop.setAmount(Clicks.number(click, shop.getAmount(), 10));
+				shop.setAmount(Clicks.number(click, shop.getAmount(), 8));
 				menu.getInventory().setItem(3, makeQuantityButton(shop));
 		});
 
 		// Price
 		menu.put(5, makePriceMajorButton(shop), click -> {
 			shop.setPriceMajor(Clicks.number(click, shop.getPriceMajor(), 10));
-			menu.getInventory().setItem(5, makePriceMajorButton(shop));
+			updateShopButtons(shop, menu);
 		});
 
 		// Price Minor
 		menu.put(14, makePriceMinorButton(shop), click -> {
 			shop.setPriceMinor(Clicks.number(click, shop.getPriceMinor(), 10));
-			menu.getInventory().setItem(14, makePriceMinorButton(shop));
+			updateShopButtons(shop, menu);
 		});
 
 		// Refund
 		menu.put(6, makeRefundMajorButton(shop), click -> {
 			shop.setRefundMajor(Clicks.number(click, shop.getRefundMajor(), 10));
-			menu.getInventory().setItem(6, makeRefundMajorButton(shop));
+			updateShopButtons(shop, menu);
 		});
 
 		// Refund Minor
 		menu.put(15, makeRefundMinorButton(shop), click -> {
 			shop.setRefundMinor(Clicks.number(click, shop.getRefundMinor(), 10));
-			menu.getInventory().setItem(15, makeRefundMinorButton(shop));
+			updateShopButtons(shop, menu);
 		});
 
 		// Confirm
