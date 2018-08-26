@@ -3,7 +3,6 @@ package com.chromaclypse.shopeditor;
 import java.util.HashSet;
 import java.util.UUID;
 
-import com.chromaclypse.api.Log;
 import com.chromaclypse.api.item.ItemBuilder;
 import com.chromaclypse.api.menu.Clicks;
 import com.chromaclypse.api.menu.Menu;
@@ -33,9 +32,14 @@ public class ShopEditor implements Listener {
 		menu.getInventory().setItem(14, makePriceMinorButton(shop));
 		menu.getInventory().setItem( 6, makeRefundMajorButton(shop));
 		menu.getInventory().setItem(15, makeRefundMinorButton(shop));
+		menu.getInventory().setItem(8, makeConfirmButton(shop));
 	}
 
 	private static String nameOf(ItemStack stack) {
+		if(stack == null) {
+			return "-None-";
+		}
+
 		if(stack.hasItemMeta() && stack.getItemMeta().hasDisplayName()) {
 			return stack.getItemMeta().getDisplayName();
 		}
@@ -44,7 +48,16 @@ public class ShopEditor implements Listener {
 	}
 
 	private static ItemStack makeItemButton(VirtualShop shop) {
-		return new ItemBuilder(shop.getItem())
+		ItemBuilder builder;
+
+		if(shop.getItem() == null) {
+			builder = new ItemBuilder(Material.BARRIER);
+		}
+		else {
+			builder = new ItemBuilder(shop.getItem());
+		}
+
+		return builder
 			.wrapText("&3Item: &f" + nameOf(shop.getItem()),
 				"Set shop item &7(in your hand)")
 			.get();
@@ -96,6 +109,25 @@ public class ShopEditor implements Listener {
 			.get();
 	}
 
+	private static ItemStack makeConfirmButton(VirtualShop shop) {
+		String prefix;
+
+		if(shop.isValid()) {
+			prefix = "&2";
+		}
+		else {
+			prefix = "&8";
+		}
+
+		return new ItemBuilder(Material.GREEN_CONCRETE)
+			.wrapText(prefix + "Update shop",
+			" &3Item: &f" + nameOf(shop.getItem()),
+			" &3Amount: &f" + shop.getAmount(),
+			" &aPrice: &f" + shop.getPriceDisplay(),
+			" &eRefund: &f" + shop.getRefundDisplay())
+			.get();
+	}
+
 	private void openShopEditor(VirtualShop shop, Player player) {
 		Menu menu = new Menu(2, "Shop Editor");
 
@@ -114,6 +146,7 @@ public class ShopEditor implements Listener {
 				if(hand != null && hand.getType() != Material.AIR) {
 					shop.setItem(hand);
 					menu.getInventory().setItem(2, makeItemButton(shop));
+					menu.getInventory().setItem(8, makeConfirmButton(shop));
 				}
 		});
 
@@ -121,6 +154,7 @@ public class ShopEditor implements Listener {
 		menu.put(3, makeQuantityButton(shop), click -> {
 				shop.setAmount(Clicks.number(click, shop.getAmount(), 8));
 				menu.getInventory().setItem(3, makeQuantityButton(shop));
+				menu.getInventory().setItem(8, makeConfirmButton(shop));
 		});
 
 		// Price
@@ -148,14 +182,10 @@ public class ShopEditor implements Listener {
 		});
 
 		// Confirm
-		menu.put(8, new ItemBuilder(Material.GREEN_CONCRETE)
-			.wrapText("&2Update shop",
-			" &3Item: &f" + nameOf(shop.getItem()),
-			" &3Amount: &f" + shop.getAmount(),
-			" &aPrice: &f" + shop.getPriceDisplay(),
-			" &eRefund: &f" + shop.getRefundDisplay())
-			.get(), click -> {
+		menu.put(8, makeConfirmButton(shop), click -> {
+			if(shop.isValid()) {
 				shop.updateAs(player);
+			}
 		});
 
 		player.openInventory(menu.getInventory());
@@ -163,23 +193,21 @@ public class ShopEditor implements Listener {
 
 	@EventHandler(priority = EventPriority.LOWEST)
 	public void onRightClick(PlayerInteractEvent event) {
-		Log.info("click");
-
 		if(event.getAction() == Action.RIGHT_CLICK_BLOCK &&
 				event.getHand() == EquipmentSlot.HAND) {
-					Log.info("right primary");
-
 			BlockState block = event.getClickedBlock().getState();
 
 			if(block instanceof Sign) {
-				Log.info("sign");
 				VirtualShop shop = VirtualShop.parse((Sign) block);
 
-				if(shop != null && shop.editableBy(event.getPlayer()) &&
-						pending.remove(event.getPlayer().getUniqueId())) {
-					Log.info("shop");
-					openShopEditor(shop, event.getPlayer());
-					event.setCancelled(true);
+				Player player = event.getPlayer();
+
+				if(shop != null && shop.editableBy(player)) {
+					if(pending.remove(player.getUniqueId()) ||
+							player.getInventory().getItemInMainHand().getType() == Material.INK_SAC) {
+						openShopEditor(shop, player);
+						event.setCancelled(true);
+					}
 				}
 			}
 		}

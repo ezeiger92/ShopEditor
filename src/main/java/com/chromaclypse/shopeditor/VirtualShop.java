@@ -3,7 +3,6 @@ package com.chromaclypse.shopeditor;
 import java.util.Locale;
 import java.util.UUID;
 
-import com.chromaclypse.api.Log;
 import com.chromaclypse.api.item.ItemBuilder;
 import com.chromaclypse.api.messages.Text;
 
@@ -29,10 +28,18 @@ public class VirtualShop {
 	public static VirtualShop parse(Sign sign) {
 		String[] lines = sign.getLines();
 
-		Log.info("lines[0]: " + lines[0]);
-		Log.info("lines[1]: " + lines[1]);
-		Log.info("lines[2]: " + lines[2]);
-		Log.info("lines[3]: " + lines[3]);
+		if(lines[0].trim().isEmpty() && lines[1].trim().isEmpty() &&
+				lines[2].trim().isEmpty() && lines[3].trim().isEmpty()) {
+			VirtualShop emptyShop = new VirtualShop();
+			emptyShop.sign = sign;
+			emptyShop.owner = null;
+			emptyShop.amount = 1;
+			emptyShop.price = 0;
+			emptyShop.refund = 0;
+			emptyShop.item = null;
+
+			return emptyShop;
+		}
 
 		UUID owner;
 		{
@@ -40,7 +47,6 @@ public class VirtualShop {
 			String uuidString = first[first.length - 1];
 
 			if(uuidString.isEmpty()) {
-				Log.info("empty line");
 				return null;
 			}
 
@@ -48,7 +54,6 @@ public class VirtualShop {
 				owner = UUID.fromString(uuidString);
 			}
 			catch(IllegalArgumentException e) {
-				Log.info("offline uuid");
 				owner = UUID.nameUUIDFromBytes(lines[0].getBytes());
 			}
 		}
@@ -58,7 +63,6 @@ public class VirtualShop {
 			amount = Integer.parseInt(lines[1]);
 		}
 		catch(NumberFormatException e) {
-			Log.info("bad amount");
 			return null;
 		}
 
@@ -68,12 +72,10 @@ public class VirtualShop {
 			String[] bs = lines[2].split(":");
 
 			if(bs.length > 2) {
-				Log.info("Full price line");
 				return null;
 			}
 
 			for(String part : bs) {
-				Log.info("part: " + part);
 				Double value = null;
 
 				String key = null;
@@ -85,7 +87,6 @@ public class VirtualShop {
 
 					if(segment.toLowerCase(Locale.ENGLISH).contains("b")) {
 						if(key != null) {
-							Log.info("already found: " + key + " (b)");
 							return null;
 						}
 
@@ -93,7 +94,6 @@ public class VirtualShop {
 					}
 					else if(segment.toLowerCase(Locale.ENGLISH).contains("s")) {
 						if(key != null) {
-							Log.info("already found: " + key + " (s)");
 							return null;
 						}
 
@@ -108,7 +108,6 @@ public class VirtualShop {
 				}
 
 				if(value == null) {
-					Log.info("no number in " + part);
 					return null;
 				}
 				else {
@@ -124,7 +123,6 @@ public class VirtualShop {
 
 		Material mat = Material.matchMaterial(lines[3].split("#")[0].replace(' ', '_'));
 
-		Log.info("is good");
 		VirtualShop shop = new VirtualShop();
 
 		shop.sign = sign;
@@ -145,7 +143,7 @@ public class VirtualShop {
 	}
 
 	public String getPriceDisplay() {
-		long priceMinor = Math.floorMod(price, 100);
+		long priceMinor = price % 100;
 		String priceString = Text.format().commas(price / 100) + '.';
 		String minor = String.valueOf(priceMinor);
 
@@ -157,7 +155,7 @@ public class VirtualShop {
 	}
 
 	public String getRefundDisplay() {
-		long refundMinor = Math.floorMod(refund, 100);
+		long refundMinor = refund % 100;
 		String refundString = Text.format().commas(refund / 100) + '.';
 		String minor = String.valueOf(refundMinor);
 
@@ -206,7 +204,10 @@ public class VirtualShop {
 
 	public void setPrice(long fullPrice) {
 		price = Math.max(fullPrice, 0);
-		refund = Math.min(refund, price);
+
+		if(price > 0) {
+			refund = Math.min(refund, price);
+		}
 	}
 
 	public long setRefundMajor(long refund) {
@@ -223,7 +224,10 @@ public class VirtualShop {
 
 	public void setRefund(long fullRefund) {
 		refund = Math.max(fullRefund, 0);
-		price = Math.max(price, refund);
+
+		if(price > 0) {
+			price = Math.max(price, refund);
+		}
 	}
 
 	public void setItem(ItemStack item) {
@@ -236,7 +240,7 @@ public class VirtualShop {
 	}
 
 	public boolean editableBy(Player player) {
-		return player.hasPermission("shopeditor.any") || player.getUniqueId().equals(owner);
+		return owner == null || player.hasPermission("shopeditor.any") || player.getUniqueId().equals(owner);
 	}
 
 	private static String decimate(long number) {
@@ -272,6 +276,14 @@ public class VirtualShop {
 
 		if(!(sign.getBlock().getState() instanceof Sign)) {
 			return false;
+		}
+
+		if(sign.getLine(0).trim().isEmpty()) {
+			if(owner == null) {
+				owner = player.getUniqueId();
+			}
+
+			sign.setLine(0, Bukkit.getOfflinePlayer(owner).getName() + ' ' + owner.toString().toLowerCase());
 		}
 
 		sign.setLine(1, String.valueOf(amount));
@@ -339,5 +351,9 @@ public class VirtualShop {
 			// error message
 			return false;
 		}
+	}
+
+	public boolean isValid() {
+		return item != null && (price > 0 || refund > 0);
 	}
 }
