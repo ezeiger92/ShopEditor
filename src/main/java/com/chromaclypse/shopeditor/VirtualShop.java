@@ -83,7 +83,7 @@ public class VirtualShop {
 						continue;
 					}
 
-					if(segment.toLowerCase(Locale.ENGLISH).equals("b")) {
+					if(segment.toLowerCase(Locale.ENGLISH).contains("b")) {
 						if(key != null) {
 							Log.info("already found: " + key + " (b)");
 							return null;
@@ -91,7 +91,7 @@ public class VirtualShop {
 
 						key = "b";
 					}
-					else if(segment.toLowerCase(Locale.ENGLISH).equals("s")) {
+					else if(segment.toLowerCase(Locale.ENGLISH).contains("s")) {
 						if(key != null) {
 							Log.info("already found: " + key + " (s)");
 							return null;
@@ -99,14 +99,11 @@ public class VirtualShop {
 
 						key = "s";
 					}
-					else {
-						try {
-							value = Double.valueOf(segment);
-						}
-						catch(NumberFormatException e) {
-							Log.info("bad number: " + segment);
-							return null;
-						}
+
+					try {
+						value = Double.valueOf(segment.replaceAll("[BbSs]", ""));
+					}
+					catch(NumberFormatException e) {
 					}
 				}
 
@@ -134,7 +131,7 @@ public class VirtualShop {
 		shop.owner = owner;
 		shop.amount = amount;
 		shop.price = (long) Math.round(price * 100);
-		shop.refund = (long) Math.round(refund) * 100;
+		shop.refund = (long) Math.round(refund * 100);
 		shop.item = mat != null ? new ItemStack(mat) : null;
 
 		return shop;
@@ -149,7 +146,7 @@ public class VirtualShop {
 
 	public String getPriceDisplay() {
 		long priceMinor = Math.floorMod(price, 100);
-		String priceString = Text.format().commas(price) + '.';
+		String priceString = Text.format().commas(price / 100) + '.';
 		String minor = String.valueOf(priceMinor);
 
 		if(priceMinor < 10) {
@@ -161,7 +158,7 @@ public class VirtualShop {
 
 	public String getRefundDisplay() {
 		long refundMinor = Math.floorMod(refund, 100);
-		String refundString = Text.format().commas(refund) + '.';
+		String refundString = Text.format().commas(refund / 100) + '.';
 		String minor = String.valueOf(refundMinor);
 
 		if(refundMinor < 10) {
@@ -172,19 +169,19 @@ public class VirtualShop {
 	}
 
 	public long getPriceMajor() {
-		return Math.floorDiv(price, 100);
+		return price / 100;
 	}
 
 	public long getPriceMinor() {
-		return Math.floorMod(price, 100);
+		return price % 100;
 	}
 
 	public long getRefundMajor() {
-		return Math.floorDiv(refund, 100);
+		return refund / 100;
 	}
 
 	public long getRefundMinor() {
-		return Math.floorMod(refund, 100);
+		return refund % 100;
 	}
 
 	public ItemStack getItem() {
@@ -202,7 +199,7 @@ public class VirtualShop {
 	}
 
 	public long setPriceMinor(long priceMinor) {
-		setPrice(price + priceMinor);
+		setPrice(getPriceMajor() * 100 + priceMinor);
 
 		return getPriceMinor();
 	}
@@ -219,7 +216,7 @@ public class VirtualShop {
 	}
 
 	public long setRefundMinor(long refundMinor) {
-		setRefund(refund + refundMinor);
+		setRefund(getRefundMajor() * 100 + refundMinor);
 
 		return getRefundMinor();
 	}
@@ -231,6 +228,7 @@ public class VirtualShop {
 
 	public void setItem(ItemStack item) {
 		this.item = ItemBuilder.clone(item);
+		this.item.setAmount(1);
 	}
 
 	public void clear() {
@@ -239,6 +237,29 @@ public class VirtualShop {
 
 	public boolean editableBy(Player player) {
 		return player.hasPermission("shopeditor.any") || player.getUniqueId().equals(owner);
+	}
+
+	private static String decimate(long number) {
+		String display = String.valueOf(number);
+
+		switch(display.length()) {
+			case 1:
+				display =  "0.0" + display;
+				break;
+
+			case 2:
+				display =  "0." + display;
+				break;
+
+			default: {
+				int decimalPos = display.length() - 2;
+
+				display = display.substring(0, decimalPos) + '.' + display.substring(decimalPos);
+				break;
+			}
+		}
+
+		return display.replace(".00", "");
 	}
 
 	public boolean updateAs(Player player) {
@@ -252,6 +273,23 @@ public class VirtualShop {
 		if(!(sign.getBlock().getState() instanceof Sign)) {
 			return false;
 		}
+
+		sign.setLine(1, String.valueOf(amount));
+
+		String priceline = "";
+
+		if(price > 0) {
+			priceline += "B " + decimate(price);
+		}
+		
+		if(refund > 0) {
+			if(!priceline.isEmpty()) {
+				priceline += " : ";
+			}
+
+			priceline += "S " + decimate(refund);
+		}
+		sign.setLine(2, priceline);
 
 		if(item != null) {
 			if(item.getType() != Material.AIR) {

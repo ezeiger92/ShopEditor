@@ -7,6 +7,7 @@ import com.chromaclypse.api.Log;
 import com.chromaclypse.api.item.ItemBuilder;
 import com.chromaclypse.api.menu.Clicks;
 import com.chromaclypse.api.menu.Menu;
+import com.chromaclypse.api.messages.Text;
 
 import org.bukkit.Material;
 import org.bukkit.block.BlockState;
@@ -34,44 +35,64 @@ public class ShopEditor implements Listener {
 		menu.getInventory().setItem(15, makeRefundMinorButton(shop));
 	}
 
+	private static String nameOf(ItemStack stack) {
+		if(stack.hasItemMeta() && stack.getItemMeta().hasDisplayName()) {
+			return stack.getItemMeta().getDisplayName();
+		}
+
+		return Text.format().niceName(stack.getType().name());
+	}
+
 	private static ItemStack makeItemButton(VirtualShop shop) {
 		return new ItemBuilder(shop.getItem())
-			.display("Set shop item &7(in your hand)")
+			.wrapText("&3Item: &f" + nameOf(shop.getItem()),
+				"Set shop item &7(in your hand)")
 			.get();
 	}
 
 	private static ItemStack makeQuantityButton(VirtualShop shop) {
 		return new ItemBuilder(Material.EMERALD)
 			.amount(shop.getAmount())
-			.display("Set transaction amount")
+			.wrapText("&3Amount: &f" + shop.getAmount(),
+			"&7&oSet transaction amount",
+			" &7Left: &f+1 &7(Shift x8)",
+			" &7Right: &f-1 &7(Shift x8)")
 			.get();
 	}
 
 	private static ItemStack makePriceMajorButton(VirtualShop shop) {
 		return new ItemBuilder(Material.GOLD_INGOT)
-			.wrapText("&aPrice: " + shop.getPriceDisplay(),
-			"Click to set major price")
+			.wrapText("&aPrice: &f" + shop.getPriceDisplay().replace(".", "&7."),
+			"&7&oClick to set major price",
+			" &7Left: &f+1 &7(Shift x10)",
+			" &7Right: &f-1 &7(Shift x10)")
 			.get();
 	}
 
 	private static ItemStack makePriceMinorButton(VirtualShop shop) {
 		return new ItemBuilder(Material.GOLD_NUGGET)
-			.wrapText("&aPrice: " + shop.getPriceDisplay(),
-			"Click to set minor price")
+			.wrapText("&aPrice: &7" + shop.getPriceDisplay().replace(".", ".&f"),
+			"&7&oClick to set minor price",
+			" &7Left: &f+1 &7(Shift x10)",
+			" &7Right: &f-1 &7(Shift x10)")
 			.get();
 	}
 
 	private static ItemStack makeRefundMajorButton(VirtualShop shop) {
 		return new ItemBuilder(Material.IRON_INGOT)
-			.wrapText("&aRefund: " + shop.getRefundDisplay(),
-			"Click to set major refund")
+			.wrapText("&eRefund: &f" + shop.getRefundDisplay().replace(".", "&7."),
+			"&7&oClick to set major refund",
+			" &7Left: &f+1 &7(Shift x10)",
+			" &7Right: &f-1 &7(Shift x10)")
 			.get();
 	}
 
 	private static ItemStack makeRefundMinorButton(VirtualShop shop) {
 		return new ItemBuilder(Material.IRON_NUGGET)
-			.wrapText("&aRefund: " + shop.getRefundDisplay(),
-			"Click to set minor refund")
+			.wrapText("&eRefund: &7" + shop.getRefundDisplay().replace(".", ".&f"),
+			"&7&oClick to set minor refund",
+			" &7Left: &f+1 &7(Shift x10)",
+			" &7Right: &f-1 &7(Shift x10)")
 			.get();
 	}
 
@@ -79,7 +100,7 @@ public class ShopEditor implements Listener {
 		Menu menu = new Menu(2, "Shop Editor");
 
 		// Delete
-		menu.put(0, new ItemBuilder(Material.RED_WOOL)
+		menu.put(0, new ItemBuilder(Material.BARRIER)
 			.display("&cDelete shop")
 			.get(), click -> {
 				shop.clear();
@@ -127,8 +148,12 @@ public class ShopEditor implements Listener {
 		});
 
 		// Confirm
-		menu.put(8, new ItemBuilder(Material.GREEN_WOOL)
-			.display("&2Update shop")
+		menu.put(8, new ItemBuilder(Material.GREEN_CONCRETE)
+			.wrapText("&2Update shop",
+			" &3Item: &f" + nameOf(shop.getItem()),
+			" &3Amount: &f" + shop.getAmount(),
+			" &aPrice: &f" + shop.getPriceDisplay(),
+			" &eRefund: &f" + shop.getRefundDisplay())
 			.get(), click -> {
 				shop.updateAs(player);
 		});
