@@ -1,4 +1,4 @@
-name: ShopEditor
+name: CSExpansion
 main: com.chromaclypse.shopeditor.ShopPlugin
 version: ${project.version}
 description: Edit shop signs
@@ -15,6 +15,9 @@ permissions:
   shopeditor.edit:
     description: Editor perm
     default: op
+  shopeditor.salesmenu:
+    description: Use buy/sell gui
+    default: false
   shopeditor.any:
     description: Edit any shop
     default: op

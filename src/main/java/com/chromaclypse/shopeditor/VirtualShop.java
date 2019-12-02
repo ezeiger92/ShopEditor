@@ -12,6 +12,8 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.Chest;
 import org.bukkit.block.Sign;
+import org.bukkit.block.data.BlockData;
+import org.bukkit.block.data.Directional;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.inventory.Inventory;
@@ -308,7 +310,15 @@ public class VirtualShop {
 				Block block = sign.getBlock().getRelative(BlockFace.DOWN);
 
 				if(!(block.getState() instanceof Chest)) {
-					return false;
+					BlockData data = sign.getBlockData();
+					
+					if(data instanceof Directional) {
+						block = sign.getBlock().getRelative(((Directional)data).getFacing().getOppositeFace());
+					}
+					
+					if(!(block.getState() instanceof Chest)) {
+						return false;
+					}
 				}
 
 				chest = (Chest) block.getState();
@@ -351,6 +361,14 @@ public class VirtualShop {
 			// error message
 			return false;
 		}
+	}
+	
+	public UUID getOwner() {
+		return owner;
+	}
+	
+	public Block getBlock() {
+		return sign.getBlock();
 	}
 
 	public boolean isValid() {
