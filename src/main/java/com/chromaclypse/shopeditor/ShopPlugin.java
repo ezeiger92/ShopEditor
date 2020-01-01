@@ -1,9 +1,9 @@
 package com.chromaclypse.shopeditor;
 
+import com.chromaclypse.api.command.CommandBase;
+import com.chromaclypse.api.command.Context;
 import com.chromaclypse.api.messages.Text;
 
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -13,7 +13,7 @@ public class ShopPlugin extends JavaPlugin {
 
 	@Override
 	public void onEnable() {
-		getCommand("shopeditor").setExecutor(this);
+		getCommand("shopeditor").setExecutor(new CommandBase().calls(this::command).getCommand());
 		getServer().getPluginManager().registerEvents(editor, this);
 	}
 
@@ -21,19 +21,12 @@ public class ShopPlugin extends JavaPlugin {
 	public void onDisable() {
 		HandlerList.unregisterAll(this);
 	}
+	
+	public boolean command(Context context) {
+		Player player = context.Player();
 
-	@Override
-	public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-		if(sender instanceof Player) {
-			Player player = (Player) sender;
-
-			editor.add(player.getUniqueId());
-			sender.sendMessage(Text.format().colorize("&aRight click your shop (sign) to edit"));
-		}
-		else {
-			sender.sendMessage(Text.format().colorize("&cMust be a player"));
-		}
-
+		editor.add(player.getUniqueId());
+		player.sendMessage(Text.format().colorize("&aRight click your shop (sign) to edit"));
 		return true;
 	}
 }
